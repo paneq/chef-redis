@@ -13,7 +13,7 @@ def load_current_resource
   if new_resource.slaveof_ip || new_resource.slaveof
     new_resource.slaveof      new_resource.slaveof || "#{new_resource.slaveof_ip} #{new_resource.slaveof_port}"
   end
-    
+
   new_resource.configure_no_appendfsync_on_rewrite
   new_resource.configure_slowlog
   new_resource.configure_list_max_ziplist
@@ -35,7 +35,7 @@ action :create do
   create_directories
   if node.platform_family == "rhel" && node.redis.install_type == "package"
     # For RHEL package installs, use the RPM's init script and set REDIS_USER
-    create_sysconfig_file  
+    create_sysconfig_file
   else
     create_service_script
   end
@@ -100,7 +100,7 @@ def create_config
     when "init"
       notifies :restart, "service[#{redis_service_name}]"
     when "runit"
-      notifies :restart, "runit_service[#{redis_service_name}]"
+      notifies :restart, "service[#{redis_service_name}]"
     end
   end
 end
@@ -136,20 +136,33 @@ def create_service_script
       variables new_resource.to_hash
     end
   when "runit"
-    runit_service "redis" do
+    name     = new_resource.name
+    user     = new_resource.user
+    conf_dir = new_resource.conf_dir
+    dst_dir  = node.redis.dst_dir
+
+    runit_service redis_service do
+      template_name "redis"
       options({
-        :name     => new_resource.name,
-        :dst_dir  => new_resource.dst_dir,
-        :conf_dir => new_resource.conf_dir,
-        :user     => new_resource.user
+        :name     => name,
+        :dst_dir  => dst_dir,
+        :conf_dir => conf_dir,
+        :user     => user
       })
     end
   end
 end
 
 def enable_service
+  actions = case new_resource.init_style
+  when "init"
+    [:enable, :start]
+  when "runit"
+    [:start]
+  end
+
   service redis_service do
-    action [ :enable, :start ]
+    action actions
   end
 end
 

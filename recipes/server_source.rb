@@ -9,6 +9,8 @@ redis_source_url = "#{node.redis.source.url}/#{redis_source_tarball}"
 
 user node.redis.user
 
+node.set[:redis][:config][:daemonize] = false
+
 %w[ src_dir dst_dir ].each do |dir|
   directory node.redis[dir] do
     owner node.redis.user
